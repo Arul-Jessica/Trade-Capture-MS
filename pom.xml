@@ -21,33 +21,28 @@
     </properties>
 
     <dependencies>
-        <!-- Web / REST API -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Artemis (JMS Broker Connectivity) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-artemis</artifactId>
         </dependency>
 
-        <!-- ActiveMQ JMS Client (Jakarta-Compatible) -->
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-client-jakarta</artifactId>
             <version>5.18.4</version>
         </dependency>
 
-        <!-- Swagger/OpenAPI UI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.5.0</version>
         </dependency>
 
-        <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

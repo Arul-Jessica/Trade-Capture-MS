@@ -1,42 +1,53 @@
 package com.tcmq.tradecapture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/api/trades")
+@RequestMapping("/trade")
 public class IntakeController {
 
-    private final SafeStoreRepo repo;
-    private final MqSender sender;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final SafeStoreRepo repo;
+    private final MqSender mqSender;
+    private final SafeStoreValidator validator;
 
-    public IntakeController(SafeStoreRepo repo, MqSender sender) {
+    public IntakeController(SafeStoreRepo repo, MqSender mqSender, SafeStoreValidator validator) {
         this.repo = repo;
-        this.sender = sender;
+        this.mqSender = mqSender;
+        this.validator = validator;
     }
 
-    @Transactional
-    @PostMapping
-    public String acceptTrade(@RequestBody TradeMessage msg) throws Exception {
+    @PostMapping("/capture")
+    public String captureTrade(@RequestBody TradeMessage msg) {
+        try {
+            validator.validate(msg);
 
-        SafeStoreTrade t = new SafeStoreTrade();
-        t.tradeId = msg.tradeId;
-        t.payloadJson = mapper.writeValueAsString(msg);
-        t.status = "NEW";
-        t.createdAt = LocalDateTime.now();
-        t.updatedAt = LocalDateTime.now();
-        repo.save(t);
+            String payloadJson = mapper.writeValueAsString(msg);
 
-        sender.send(msg);
+            SafeStoreTrade trade = new SafeStoreTrade();
+            trade.tradeId = msg.tradeId;
+            trade.payloadJson = payloadJson;
+            trade.status = "NEW";
+            trade.createdAt = LocalDateTime.now();
+            trade.updatedAt = LocalDateTime.now();
+            repo.save(trade);
 
-        t.status = "SENT";
-        t.updatedAt = LocalDateTime.now();
-        repo.save(t);
+            System.out.println("Stored trade in SafeStore: " + msg.tradeId);
 
-        return "RECEIVED: " + msg.tradeId;
+            msg.source = "INTAKE";
+            msg.timestamp = LocalDateTime.now().toString();
+            mqSender.send(msg);
+
+            return "Trade captured successfully with ID: " + msg.tradeId;
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Validation failed: " + e.getMessage());
+            return "Rejected: " + e.getMessage();
+        } catch (Exception e) {
+            System.err.println("Capture failed: " + e.getMessage());
+            return "Internal Error: " + e.getMessage();
+        }
     }
 }
